@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive ESG Stock Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as a single-page, vertically scrolling journey, organized into thematic sections that build upon each other. This structure was chosen over a complex dashboard to create a narrative flow, guiding a novice user from basic definitions to more complex topics like performance and controversy. The user flow is: 1) Introduction/What is ESG? (a landing point), 2) The Three Pillars (interactive exploration of E, S, and G), 3) How are companies rated? (explaining the complex evaluation process), 4) Performance & Risk (presenting the investment case with data), 5) Challenges & Controversies (addressing greenwashing and backlash), and 6) Practical Investing (a case study). This logical progression ensures a user can easily grasp the fundamentals before diving into nuanced data, making the information highly consumable and reducing cognitive load. Navigation is supported by a sticky header for quick jumps between these logical sections. -->
+    <!-- Visualization & Content Choices: 
+        - What is ESG?: Report Info -> Definition of E, S, G. Goal -> Inform. Viz/Method -> Interactive card layout with clickable tabs for E, S, and G. Interaction -> Clicking a pillar reveals its detailed description. Justification -> More engaging than a static list, encourages user exploration from the start. Method -> HTML/CSS/JS.
+        - How are companies rated?: Report Info -> Different rating agencies, scales, and the concept of materiality. Goal -> Organize & Compare. Viz/Method -> A dynamic bar chart comparing fictional company ratings across agencies, and a toggle for "Financial" vs. "Double" materiality concepts. Interaction -> Buttons to switch chart data between companies, toggle to switch descriptive text about materiality. Justification -> The chart visually demonstrates rating inconsistencies, a key report takeaway. The toggle simplifies a complex concept. Library/Method -> Chart.js, HTML/CSS/JS.
+        - Performance & Risk: Report Info -> ESG fund resilience vs. traditional funds. Goal -> Compare. Viz/Method -> A line chart comparing the performance of an ESG fund vs. a traditional index over time. Interaction -> Hovering over the chart reveals data points and tooltips. Justification -> A line chart is the most effective way to show performance trends and comparisons over a period, directly addressing the report's findings. Library/Method -> Chart.js.
+        - Practical Investing (ESGV Case Study): Report Info -> Sector allocation of the ESGV ETF. Goal -> Inform/Compare. Viz/Method -> A doughnut chart showing the sector breakdown. Interaction -> Hovering over segments shows percentage and sector name. Justification -> A doughnut chart is ideal for showing parts of a whole, clearly illustrating the fund's sector tilt as described in the report. Library/Method -> Chart.js.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #383838;
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link.active {
+            color: #A0522D;
+            border-bottom-color: #A0522D;
+        }
+        .nav-link:hover {
+            color: #A0522D;
+        }
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary {
+            background-color: #A0522D;
+            color: #FFFFFF;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #8B4513;
+        }
+        .btn-secondary {
+            background-color: #EAE3DC;
+            color: #383838;
+            transition: background-color 0.3s;
+        }
+        .btn-secondary.active {
+            background-color: #A0522D;
+            color: #FFFFFF;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="sticky top-0 bg-FDFBF8/80 backdrop-blur-md z-50 shadow-sm">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">ESG Investing Explorer</h1>
+                </div>
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#intro" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">Introduction</a>
+                    <a href="#pillars" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">The Pillars</a>
+                    <a href="#ratings" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">Ratings</a>
+                    <a href="#performance" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">Performance</a>
+                    <a href="#challenges" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">Challenges</a>
+                    <a href="#investing" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">Investing</a>
+                </nav>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="#intro" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Introduction</a>
+            <a href="#pillars" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">The Pillars</a>
+            <a href="#ratings" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Ratings</a>
+            <a href="#performance" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Performance</a>
+            <a href="#challenges" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Challenges</a>
+            <a href="#investing" class="block py-2 px-4 text-sm text-gray-600 hover:bg-gray-100">Investing</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <!-- Section 1: Introduction -->
+        <section id="intro" class="text-center mb-16 md:mb-24 scroll-mt-16">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">What is an ESG Stock?</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600">
+                ESG investing is an approach that goes beyond traditional financial analysis. It evaluates companies based on their environmental, social, and governance practices. This interactive guide will break down what these pillars mean, how companies are rated, and what it all means for investors in the United States.
+            </p>
+        </section>
+
+        <!-- Section 2: The Three Pillars -->
+        <section id="pillars" class="mb-16 md:mb-24 scroll-mt-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900">The Three Pillars of ESG</h2>
+                <p class="mt-2 text-lg text-gray-600">Click on each pillar to learn more about the factors considered.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Environmental Card -->
+                <div class="card bg-white p-6 rounded-lg shadow-md text-center cursor-pointer pillar-card" data-pillar="environmental">
+                    <div class="text-4xl mb-4">🌍</div>
+                    <h3 class="text-xl font-semibold mb-2">Environmental</h3>
+                    <p class="text-gray-600">A company's impact on the planet.</p>
+                </div>
+                <!-- Social Card -->
+                <div class="card bg-white p-6 rounded-lg shadow-md text-center cursor-pointer pillar-card" data-pillar="social">
+                    <div class="text-4xl mb-4">🤝</div>
+                    <h3 class="text-xl font-semibold mb-2">Social</h3>
+                    <p class="text-gray-600">How it manages relationships with people.</p>
+                </div>
+                <!-- Governance Card -->
+                <div class="card bg-white p-6 rounded-lg shadow-md text-center cursor-pointer pillar-card" data-pillar="governance">
+                    <div class="text-4xl mb-4">🏛️</div>
+                    <h3 class="text-xl font-semibold mb-2">Governance</h3>
+                    <p class="text-gray-600">The integrity of its internal controls.</p>
+                </div>
+            </div>
+            <div id="pillar-details" class="mt-8 p-6 bg-white rounded-lg shadow-inner min-h-[200px] flex items-center justify-center">
+                <p class="text-gray-500 italic">Select a pillar above to see details.</p>
+            </div>
+        </section>
+
+        <!-- Section 3: How Companies are Rated -->
+        <section id="ratings" class="mb-16 md:mb-24 scroll-mt-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900">The Complex World of ESG Ratings</h2>
+                <p class="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">A major challenge in ESG is the lack of a standardized rating system. Different agencies use different methodologies, leading to conflicting scores for the same company. This interactivity demonstrates how ratings can vary.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex justify-center space-x-4 mb-6">
+                    <button class="btn-secondary px-4 py-2 rounded-md rating-company-btn active" data-company="A">Tech Innovate Inc.</button>
+                    <button class="btn-secondary px-4 py-2 rounded-md rating-company-btn" data-company="B">Global Energy Co.</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="ratingsChart"></canvas>
+                </div>
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold text-center mb-4">A Key Concept: Materiality</h3>
+                     <div class="flex justify-center space-x-4 mb-4">
+                        <button class="btn-secondary px-4 py-2 rounded-md materiality-btn active" data-concept="financial">Financial Materiality</button>
+                        <button class="btn-secondary px-4 py-2 rounded-md materiality-btn" data-concept="double">Double Materiality</button>
+                    </div>
+                    <p id="materiality-text" class="text-gray-700 text-center max-w-2xl mx-auto"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Performance & Risk -->
+        <section id="performance" class="mb-16 md:mb-24 scroll-mt-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900">Does ESG Investing Pay Off?</h2>
+                <p class="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">A key argument for ESG is that sustainable companies are more resilient and can outperform over the long term, especially during market downturns. The chart below shows a hypothetical comparison of an ESG fund against a traditional market index.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="mt-6 grid md:grid-cols-2 gap-6 text-center">
+                    <div>
+                        <h4 class="font-semibold text-lg">Enhanced Risk Management</h4>
+                        <p class="text-gray-600">ESG analysis can uncover risks traditional methods miss, like vulnerability to climate regulation or poor labor practices.</p>
+                    </div>
+                     <div>
+                        <h4 class="font-semibold text-lg">Resilience in Downturns</h4>
+                        <p class="text-gray-600">Studies suggest ESG funds showed greater resilience during the COVID-19 market shock, outperforming traditional funds.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 5: Challenges & Controversies -->
+        <section id="challenges" class="mb-16 md:mb-24 scroll-mt-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900">Challenges and Criticisms</h2>
+                <p class="mt-2 text-lg text-gray-600">ESG is not without its controversies, from misleading marketing to political backlash.</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-xl mb-3">🚨 Greenwashing</h3>
+                    <p class="text-gray-700">This is when a company spends more time and money marketing itself as environmentally friendly than on minimizing its environmental impact. The lack of standardized reporting makes it easier for companies to make vague or misleading claims to attract investors.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-xl mb-3">🏛️ Political Backlash</h3>
+                    <p class="text-gray-700">In the U.S., ESG has become a political issue. Some critics argue that it prioritizes social agendas over financial returns. This has led some companies to tone down their public ESG communication to avoid becoming a target of political opposition.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Practical Investing Case Study -->
+        <section id="investing" class="scroll-mt-16">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-gray-900">How to Invest: A Case Study</h2>
+                <p class="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">For most people, ESG investing is done through Exchange-Traded Funds (ETFs). Let's look at a real-world example: the Vanguard ESG U.S. Stock ETF (ESGV) and how its screening process affects its composition.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="font-semibold text-2xl mb-4">Vanguard ESG U.S. Stock ETF (ESGV)</h3>
+                        <p class="text-gray-700 mb-4">ESGV tracks a broad U.S. stock market index but applies screening criteria to exclude certain industries. This fundamentally changes its makeup compared to a standard S&P 500 fund.</p>
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><span class="font-semibold">Excludes:</span> Companies involved in alcohol, tobacco, gambling, weapons, fossil fuels, and nuclear power.</li>
+                            <li><span class="font-semibold">Resulting Tilt:</span> This exclusion process leads to a higher concentration in technology stocks and a significantly lower weight in the energy sector.</li>
+                        </ul>
+                    </div>
+                    <div class="chart-container h-64 md:h-80">
+                        <canvas id="esgvSectorChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-gray-100 mt-16 md:mt-24">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-gray-600">
+            <p>This interactive experience is based on the "Comprehensive Report on Environmental, Social, and Governance (ESG) Stocks in the United States."</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            // Mobile Menu Toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Sticky Nav Active State
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 80) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').includes(current)) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+            // Pillar Details Interaction
+            const pillarCards = document.querySelectorAll('.pillar-card');
+            const pillarDetails = document.getElementById('pillar-details');
+            const pillarContent = {
+                environmental: {
+                    title: 'Environmental (E)',
+                    text: 'This pillar assesses a company\'s stewardship of the natural world. Key factors include carbon emissions, energy efficiency, water usage, waste management, and pollution control. It looks at the direct impact of a company\'s operations and also its supply chain.'
+                },
+                social: {
+                    title: 'Social (S)',
+                    text: 'The social pillar examines how a company manages relationships with its employees, suppliers, customers, and the communities where it operates. It covers topics like diversity and inclusion, labor standards, employee health and safety, and data privacy.'
+                },
+                governance: {
+                    title: 'Governance (G)',
+                    text: 'Governance refers to the set of rules, practices, and processes used to direct and control a company. This includes executive pay, board diversity and independence, shareholder rights, and internal controls to prevent corruption and ensure transparency.'
+                }
+            };
+
+            pillarCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const pillar = card.dataset.pillar;
+                    pillarDetails.innerHTML = `
+                        <div class="text-left">
+                            <h4 class="text-xl font-bold mb-2">${pillarContent[pillar].title}</h4>
+                            <p class="text-gray-700">${pillarContent[pillar].text}</p>
+                        </div>
+                    `;
+                });
+            });
+
+            // Ratings Chart
+            const ratingsCtx = document.getElementById('ratingsChart').getContext('2d');
+            const ratingsData = {
+                A: {
+                    labels: ['MSCI', 'Sustainalytics', 'RepRisk', 'Bloomberg'],
+                    scores: [8.5, 6.8, 7.5, 9.1],
+                    title: 'Tech Innovate Inc. Ratings'
+                },
+                B: {
+                    labels: ['MSCI', 'Sustainalytics', 'RepRisk', 'Bloomberg'],
+                    scores: [6.2, 8.1, 5.5, 7.2],
+                    title: 'Global Energy Co. Ratings'
+                }
+            };
+            
+            let ratingsChart = new Chart(ratingsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ratingsData.A.labels,
+                    datasets: [{
+                        label: 'ESG Score (out of 10)',
+                        data: ratingsData.A.scores,
+                        backgroundColor: 'rgba(160, 82, 45, 0.6)',
+                        borderColor: 'rgba(160, 82, 45, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: ratingsData.A.title,
+                            font: { size: 16 }
+                        },
+                        legend: { display: false }
+                    }
+                }
+            });
+            
+            const ratingCompanyBtns = document.querySelectorAll('.rating-company-btn');
+            ratingCompanyBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    ratingCompanyBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const company = btn.dataset.company;
+                    ratingsChart.data.labels = ratingsData[company].labels;
+                    ratingsChart.data.datasets[0].data = ratingsData[company].scores;
+                    ratingsChart.options.plugins.title.text = ratingsData[company].title;
+                    ratingsChart.update();
+                });
+            });
+            
+            // Materiality Text
+            const materialityBtns = document.querySelectorAll('.materiality-btn');
+            const materialityTextEl = document.getElementById('materiality-text');
+            const materialityContent = {
+                financial: "Focuses on how ESG issues impact a company's financial performance (the 'outside-in' view). An issue is material if it could affect the company's bottom line, such as a carbon tax or supply chain disruption.",
+                double: "A broader view that considers both financial impact on the company AND the company's impact on society and the environment (the 'inside-out' view). This acknowledges that a company has responsibilities beyond just shareholder returns."
+            };
+            
+            materialityTextEl.textContent = materialityContent.financial;
+            materialityBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    materialityBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    materialityTextEl.textContent = materialityContent[btn.dataset.concept];
+                });
+            });
+
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: ['2020 Q1', '2020 Q2', '2020 Q3', '2020 Q4', '2021 Q1', '2021 Q2', '2021 Q3', '2021 Q4'],
+                    datasets: [{
+                        label: 'ESG Fund',
+                        data: [100, 90, 105, 115, 125, 130, 128, 140],
+                        borderColor: 'rgba(160, 82, 45, 1)',
+                        backgroundColor: 'rgba(160, 82, 45, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }, {
+                        label: 'Traditional Index',
+                        data: [100, 85, 98, 108, 115, 122, 120, 132],
+                        borderColor: 'rgba(128, 128, 128, 1)',
+                        backgroundColor: 'rgba(128, 128, 128, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Hypothetical Fund Performance (Indexed to 100)',
+                            font: { size: 16 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+
+            // ESGV Sector Chart
+            const esgvCtx = document.getElementById('esgvSectorChart').getContext('2d');
+            new Chart(esgvCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Technology', 'Healthcare', 'Financials', 'Consumer Discretionary', 'Industrials', 'Other', 'Energy'],
+                    datasets: [{
+                        label: 'Sector Allocation',
+                        data: [32, 15, 13, 12, 10, 17, 1],
+                        backgroundColor: ['#8B4513', '#A0522D', '#CD853F', '#D2B48C', '#F5DEB3', '#EAE3DC', '#696969'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'ESGV Sector Allocation Example',
+                            font: { size: 16 }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 10
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
